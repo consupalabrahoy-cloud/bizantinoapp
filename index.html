@@ -318,76 +318,76 @@
       document.getElementById('lector-actions').classList.add('hidden');
     }
 
-    // Lógica de Concordancia
-    function buscarConcordancia() {
-      const query = document.getElementById('conc-input').value.trim().toLowerCase();
-      const modo = document.querySelector('input[name="search-mode"]:checked').value;
-      const out = document.getElementById('conc-out');
-      const info = document.getElementById('conc-info');
+function buscarConcordancia() {
+  const query = document.getElementById('conc-input').value.trim().toLowerCase();
+  const modo = document.querySelector('input[name="search-mode"]:checked').value;
+  const out = document.getElementById('conc-out');
+  const info = document.getElementById('conc-info');
 
-      if (!query) {
-        out.innerHTML = '';
-        info.innerHTML = '';
-        return;
+  if (!query) {
+    out.innerHTML = '';
+    info.innerHTML = '';
+    return;
+  }
+
+  const resultados = [];
+  const queryEscaped = escapeRegExp(query);
+
+  dbData.forEach(item => {
+    const texto = item.texto_griego.toLowerCase();
+
+    if (modo === 'estricta') {
+      // Regex estricto: la palabra debe estar aislada por espacios, inicio/fin de cadena o puntuación
+      const regexEstricto = new RegExp(`(?:^|[\\s.,;·—«»"'])` + queryEscaped + `(?:$|[\\s.,;·—«»"'])`, 'i');
+      
+      if (regexEstricto.test(texto)) {
+        resultados.push({
+          pasaje: `${item.encabezado}:${item.versiculo}`,
+          texto: item.texto_griego
+        });
       }
-
-      const resultados = [];
-
-      dbData.forEach(item => {
-        const texto = item.texto_griego.toLowerCase();
-
-        if (modo === 'estricta') {
-          // Búsqueda exact de secuencia/palabra completa
-          const regex = new RegExp(`(?:^|\\s)${escapeRegExp(query)}(?:$|\\s)`, 'i');
-          if (regex.test(texto) || texto.includes(query)) {
-            resultados.push({
-              pasaje: `${item.encabezado}:${item.versiculo}`,
-              texto: item.texto_griego
-            });
-          }
-        } else {
-          // Búsqueda flexible (palabra que comienza con la secuencia)
-          const palabras = texto.split(/\s+/);
-          const coincidentes = palabras.filter(p => p.startsWith(query));
-          if (coincidentes.length > 0) {
-            // Eliminar duplicados en el mismo versículo
-            const unicas = [...new Set(coincidentes)];
-            resultados.push({
-              pasaje: `${item.encabezado}:${item.versiculo}`,
-              coincidencias: unicas.join(', '),
-              texto: item.texto_griego
-            });
-          }
-        }
-      });
-
-      info.textContent = `Apariciones encontradas: ${resultados.length}`;
-
-      if (resultados.length === 0) {
-        out.innerHTML = '<div class="text-sm text-gemini-muted font-sans py-4">No se encontraron coincidencias.</div>';
-        return;
-      }
-
-      if (modo === 'estricta') {
-        out.innerHTML = resultados.map(r => `
-          <div class="py-1 border-b border-gemini-border/50 last:border-0">
-            <span class="text-gemini-accent font-sans text-xs font-semibold block sm:inline mr-2">${r.pasaje}</span>
-            <span>${r.texto}</span>
-          </div>
-        `).join('');
-      } else {
-        out.innerHTML = resultados.map(r => `
-          <div class="py-1 border-b border-gemini-border/50 last:border-0">
-            <div class="font-sans text-xs mb-1">
-              <span class="text-gemini-accent font-semibold mr-2">${r.pasaje}</span>
-              <span class="text-gemini-muted bg-gemini-card px-2 py-0.5 rounded border border-gemini-border">[${r.coincidencias}]</span>
-            </div>
-            <span>${r.texto}</span>
-          </div>
-        `).join('');
+    } else {
+      // Búsqueda flexible: prefijos de palabras (empieza por la secuencia ingresada)
+      const palabras = texto.split(/[\s.,;·—«»"']+/);
+      const coincidentes = palabras.filter(p => p.startsWith(query));
+      if (coincidentes.length > 0) {
+        const unicas = [...new Set(coincidentes)];
+        resultados.push({
+          pasaje: `${item.encabezado}:${item.versiculo}`,
+          coincidencias: unicas.join(', '),
+          texto: item.texto_griego
+        });
       }
     }
+  });
 
+  info.textContent = `Apariciones encontradas: ${resultados.length}`;
+
+  if (resultados.length === 0) {
+    out.innerHTML = '<div class="text-sm text-gemini-muted font-sans py-4">No se encontraron coincidencias.</div>';
+    return;
+  }
+
+  if (modo === 'estricta') {
+    out.innerHTML = resultados.map(r => `
+      <div class="py-1 border-b border-gemini-border/50 last:border-0">
+        <span class="text-gemini-accent font-sans text-xs font-semibold block sm:inline mr-2">${r.pasaje}</span>
+        <span>${r.texto}</span>
+      </div>
+    `).join('');
+  } else {
+    out.innerHTML = resultados.map(r => `
+      <div class="py-1 border-b border-gemini-border/50 last:border-0">
+        <div class="font-sans text-xs mb-1">
+          <span class="text-gemini-accent font-semibold mr-2">${r.pasaje}</span>
+          <span class="text-gemini-muted bg-gemini-card px-2 py-0.5 rounded border border-gemini-border">[${r.coincidencias}]</span>
+        </div>
+        <span>${r.texto}</span>
+      </div>
+    `).join('');
+  }
+}
+     
     function escapeRegExp(string) {
       return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
